@@ -36,7 +36,6 @@ public class GameManager {
     private boolean pvpEnabled = false;
     private static final int PVP_DELAY = 15 * 60; // 15 phút
 
-    // Các thông số bo mới
     private static final double INITIAL_BORDER_SIZE = 500.0;
     private static final double FINAL_BORDER_SIZE = 10.0;
     private static final int SHRINK_DURATION_SECONDS = 30 * 60; // 30 phút
@@ -46,7 +45,6 @@ public class GameManager {
     private Location borderCenter;
     private World currentWorld;
 
-    // Team manager
     private final TeamManager teamManager = new TeamManager();
 
     public GameManager(BattleRoyalPlugin plugin) {
@@ -116,13 +114,15 @@ public class GameManager {
             return;
         }
 
+        // ---- XỬ LÝ RỜI TEAM ----
         if (teamManager.hasTeam(uuid)) {
-            if (teamManager.getTeam(uuid).getLeader().equals(uuid)) {
+            UUID leader = teamManager.getTeamLeader(uuid);
+            if (leader != null && leader.equals(uuid)) {
                 Set<UUID> members = teamManager.getTeamMembers(uuid);
                 if (members.size() > 1) {
                     for (UUID m : members) {
                         if (!m.equals(uuid)) {
-                            teamManager.getTeam(uuid).setLeader(m);
+                            teamManager.setTeamLeader(uuid, m);
                             break;
                         }
                     }
@@ -130,9 +130,7 @@ public class GameManager {
                     teamManager.disbandTeam(uuid);
                 }
             }
-            if (teamManager.hasTeam(uuid)) {
-                teamManager.leaveTeam(uuid);
-            }
+            teamManager.leaveTeam(uuid);
         }
 
         allPlayers.remove(uuid);
@@ -230,7 +228,6 @@ public class GameManager {
         pvpEnabled = false;
         isShrinking = false;
 
-        // Chọn tọa độ border mới
         int x = CENTER_START + matchIndex * CENTER_STEP;
         int z = CENTER_START + matchIndex * CENTER_STEP;
         borderCenter = new Location(currentWorld, x, 0, z);
@@ -240,7 +237,6 @@ public class GameManager {
 
         spawnPlayers();
 
-        // Bật PVP sau 15 phút
         pvpTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -251,7 +247,6 @@ public class GameManager {
             }
         }.runTaskLater(plugin, PVP_DELAY * 20L);
 
-        // Cập nhật scoreboard mỗi giây
         scoreboardTask = new BukkitRunnable() {
             @Override
             public void run() {
