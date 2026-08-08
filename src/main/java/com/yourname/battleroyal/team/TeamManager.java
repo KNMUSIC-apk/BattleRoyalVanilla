@@ -1,6 +1,5 @@
 package com.yourname.battleroyal.team;
 
-import org.bukkit.entity.Player;
 import java.util.*;
 
 public class TeamManager {
@@ -56,7 +55,7 @@ public class TeamManager {
         team.removeMember(player);
         playerTeam.remove(player);
         if (team.getMembers().isEmpty()) {
-            // team sẽ bị garbage collected
+            // team sẽ được garbage collect
         } else {
             if (team.getLeader().equals(player)) {
                 UUID newLeader = team.getMembers().iterator().next();
@@ -85,8 +84,7 @@ public class TeamManager {
         return playerTeam.get(player).getMembers();
     }
 
-    // ========== PHƯƠNG THỨC BỔ SUNG ==========
-
+    // ===== PHƯƠNG THỨC BỔ SUNG =====
     public boolean hasPendingInvites(UUID player) {
         return pendingInvites.containsKey(player) && !pendingInvites.get(player).isEmpty();
     }
@@ -95,8 +93,7 @@ public class TeamManager {
         return pendingInvites.getOrDefault(player, Collections.emptySet());
     }
 
-    // ==========================================
-
+    // ===== LỚP TEAM NỘI BỘ =====
     private static class Team {
         private UUID leader;
         private final Set<UUID> members = new HashSet<>();
