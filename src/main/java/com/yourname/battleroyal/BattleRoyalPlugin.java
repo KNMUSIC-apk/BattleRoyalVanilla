@@ -16,26 +16,30 @@ public final class BattleRoyalPlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
 
-        // ---- Tự động tạo config nếu chưa có ----
+        // Tạo config mặc định nếu chưa có
         getConfig().options().copyDefaults(true);
         getConfig().addDefault("lobby", null);
         getConfig().addDefault("waiting", null);
         getConfig().addDefault("matchIndex", 0);
-        saveConfig(); // Lưu file config.yml ngay lập tức
+        saveConfig();
 
         gameManager = new GameManager(this);
         scoreboardManager = new ScoreboardManager(this);
 
-        // Đăng ký lệnh
+        // Đăng ký các lệnh cũ
         getCommand("join").setExecutor(new JoinCommand());
         getCommand("setjoins").setExecutor(new SetJoinsCommand());
         getCommand("setlobby").setExecutor(new SetLobbyCommand());
         getCommand("start").setExecutor(new StartCommand());
 
+        // Đăng ký lệnh mới (team và leave)
+        getCommand("team").setExecutor(new TeamCommand());
+        getCommand("leave").setExecutor(new LeaveCommand());
+
         // Đăng ký sự kiện
         Bukkit.getPluginManager().registerEvents(new PlayerListener(this), this);
 
-        // Tải cấu hình
+        // Tải cấu hình (lobby, waiting, matchIndex)
         gameManager.loadConfig();
         getLogger().info("BattleRoyalPlugin enabled!");
     }
