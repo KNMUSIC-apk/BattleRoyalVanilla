@@ -18,3 +18,9 @@ commands:
     description: Bắt đầu trận đấu ngay (admin)
     usage: /start
     permission: op
+  team:
+    description: Quản lý team
+    usage: /team invite <player> | /team accept | /team leave
+  leave:
+    description: Rời khỏi trận đấu và về Lobby
+    usage: /leave
