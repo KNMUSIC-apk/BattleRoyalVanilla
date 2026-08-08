@@ -1,0 +1,20 @@
+name: BattleRoyal
+version: 1.0
+main: com.yourname.battleroyal.BattleRoyalPlugin
+api-version: 1.21
+commands:
+  join:
+    description: Tham gia trận đấu
+    usage: /join
+  setjoins:
+    description: Set khu vực chờ (admin)
+    usage: /setjoins
+    permission: op
+  setlobby:
+    description: Set Lobby (admin)
+    usage: /setlobby
+    permission: op
+  start:
+    description: Bắt đầu trận đấu ngay (admin)
+    usage: /start
+    permission: op
