@@ -37,7 +37,6 @@ public class PlayerListener implements Listener {
 
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        // Chỉ xử lý khi cả hai đều là người chơi
         if (!(event.getEntity() instanceof Player) || !(event.getDamager() instanceof Player)) {
             return;
         }
@@ -46,27 +45,20 @@ public class PlayerListener implements Listener {
         Player damager = (Player) event.getDamager();
         GameManager gm = plugin.getGameManager();
 
-        // Nếu trận đấu đang diễn ra
         if (gm.getState() == GameState.STARTED) {
-            // 1. Kiểm tra cùng team – cấm tấn công đồng đội
+            // Kiểm tra cùng team
             if (gm.getTeamManager().isSameTeam(damager.getUniqueId(), victim.getUniqueId())) {
                 event.setCancelled(true);
                 damager.sendMessage("§cBạn không thể tấn công đồng đội!");
                 return;
             }
 
-            // 2. Kiểm tra PVP đã bật chưa
             if (!gm.isPvpEnabled()) {
                 event.setCancelled(true);
-                int remaining = 15 - (gm.getGameTimeSeconds() / 60);
-                if (remaining > 0) {
-                    damager.sendMessage("§cPVP chưa được bật (còn " + remaining + " phút)");
-                } else {
-                    damager.sendMessage("§cPVP chưa được bật (đợi thêm vài giây)");
-                }
+                int remaining = gm.getTimeUntilPvp();
+                damager.sendMessage("§cPVP chưa được bật (còn " + (remaining/60) + " phút)");
             }
         } else {
-            // Ngoài trận đấu thì cấm PVP
             event.setCancelled(true);
         }
     }
@@ -75,7 +67,6 @@ public class PlayerListener implements Listener {
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         GameManager gm = plugin.getGameManager();
-        // Nếu trận đang diễn ra và người chơi đã chết (spectator), thêm prefix
         if (gm.getState() == GameState.STARTED && !gm.getAlivePlayers().contains(player.getUniqueId())) {
             event.setFormat("§7[Spectator] " + event.getFormat());
         }
