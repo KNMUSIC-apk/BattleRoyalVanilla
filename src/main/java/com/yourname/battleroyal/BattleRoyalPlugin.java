@@ -15,7 +15,13 @@ public final class BattleRoyalPlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
-        saveDefaultConfig();
+
+        // ---- Tự động tạo config nếu chưa có ----
+        getConfig().options().copyDefaults(true);
+        getConfig().addDefault("lobby", null);
+        getConfig().addDefault("waiting", null);
+        getConfig().addDefault("matchIndex", 0);
+        saveConfig(); // Lưu file config.yml ngay lập tức
 
         gameManager = new GameManager(this);
         scoreboardManager = new ScoreboardManager(this);
