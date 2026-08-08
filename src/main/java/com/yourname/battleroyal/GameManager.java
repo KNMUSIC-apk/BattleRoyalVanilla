@@ -29,19 +29,24 @@ public class GameManager {
 
     private BukkitTask countdownTask;
     private BukkitTask pvpTask;
+    private BukkitTask shrinkTask;       // Task co bo
     private BukkitTask scoreboardTask;
 
     private int gameTimeSeconds = 0;
-    private int nextShrinkIndex = 0;
-    private final List<Integer> borderSizes = Arrays.asList(10000, 8500, 7000, 5500, 4000, 2500, 1000);
-    private static final int SHRINK_INTERVAL = 15 * 60; // 15 phút
     private boolean pvpEnabled = false;
     private static final int PVP_DELAY = 15 * 60; // 15 phút
+
+    // Các thông số bo mới
+    private static final double INITIAL_BORDER_SIZE = 500.0;
+    private static final double FINAL_BORDER_SIZE = 10.0;
+    private static final int SHRINK_DURATION_SECONDS = 30 * 60; // 30 phút
+    private long shrinkStartTime = 0;
+    private boolean isShrinking = false;
 
     private Location borderCenter;
     private World currentWorld;
 
-    // --- Team manager ---
+    // Team manager
     private final TeamManager teamManager = new TeamManager();
 
     public GameManager(BattleRoyalPlugin plugin) {
@@ -107,18 +112,14 @@ public class GameManager {
     public void leaveGame(Player player) {
         UUID uuid = player.getUniqueId();
         if (!allPlayers.contains(uuid)) {
-            // Nếu chưa tham gia, teleport về lobby nếu có
             if (lobbyLocation != null) player.teleport(lobbyLocation);
             return;
         }
 
-        // Xử lý team trước khi rời game
         if (teamManager.hasTeam(uuid)) {
-            // Nếu là leader và team còn thành viên, chuyển leader
             if (teamManager.getTeam(uuid).getLeader().equals(uuid)) {
                 Set<UUID> members = teamManager.getTeamMembers(uuid);
                 if (members.size() > 1) {
-                    // Tìm member khác để làm leader
                     for (UUID m : members) {
                         if (!m.equals(uuid)) {
                             teamManager.getTeam(uuid).setLeader(m);
@@ -126,21 +127,17 @@ public class GameManager {
                         }
                     }
                 } else {
-                    // Không còn ai, giải tán team
                     teamManager.disbandTeam(uuid);
                 }
             }
-            // Rời khỏi team (nếu vẫn còn trong team)
             if (teamManager.hasTeam(uuid)) {
                 teamManager.leaveTeam(uuid);
             }
         }
 
-        // Xóa khỏi danh sách trận đấu
         allPlayers.remove(uuid);
         alivePlayers.remove(uuid);
 
-        // Teleport về lobby và reset
         if (lobbyLocation != null) {
             player.teleport(lobbyLocation);
             player.setGameMode(GameMode.SURVIVAL);
@@ -152,7 +149,6 @@ public class GameManager {
         }
         player.sendMessage("§aBạn đã rời trận đấu và trở về Lobby.");
 
-        // Cập nhật trạng thái nếu cần
         if (state == GameState.STARTED) {
             if (alivePlayers.isEmpty()) {
                 endGame(null);
@@ -231,8 +227,8 @@ public class GameManager {
     private void startGame() {
         state = GameState.STARTED;
         gameTimeSeconds = 0;
-        nextShrinkIndex = 0;
         pvpEnabled = false;
+        isShrinking = false;
 
         // Chọn tọa độ border mới
         int x = CENTER_START + matchIndex * CENTER_STEP;
@@ -240,7 +236,7 @@ public class GameManager {
         borderCenter = new Location(currentWorld, x, 0, z);
         WorldBorder wb = currentWorld.getWorldBorder();
         wb.setCenter(x, z);
-        wb.setSize(borderSizes.get(0));
+        wb.setSize(INITIAL_BORDER_SIZE); // 500×500
 
         spawnPlayers();
 
@@ -250,25 +246,56 @@ public class GameManager {
             public void run() {
                 pvpEnabled = true;
                 Bukkit.broadcastMessage("§c§lPVP ĐÃ BẬT! Hãy chiến đấu!");
+                // Bắt đầu co bo ngay khi PVP bật
+                startShrinking();
                 updateScoreboard();
             }
         }.runTaskLater(plugin, PVP_DELAY * 20L);
 
-        // Cập nhật scoreboard và thu hẹp border mỗi 15 phút
+        // Cập nhật scoreboard mỗi giây
         scoreboardTask = new BukkitRunnable() {
             @Override
             public void run() {
                 gameTimeSeconds++;
                 updateScoreboard();
-
-                if (gameTimeSeconds % SHRINK_INTERVAL == 0 && gameTimeSeconds > 0) {
-                    shrinkBorder();
-                }
             }
         }.runTaskTimer(plugin, 0L, 20L);
 
         Bukkit.broadcastMessage("§a§lTRẬN ĐẤU BẮT ĐẦU! Chúc các bạn may mắn!");
         updateScoreboard();
+    }
+
+    private void startShrinking() {
+        if (isShrinking) return;
+        isShrinking = true;
+        shrinkStartTime = System.currentTimeMillis();
+        Bukkit.broadcastMessage("§6Bắt đầu thu hẹp WorldBorder! Kết thúc sau 30 phút.");
+
+        shrinkTask = new BukkitRunnable() {
+            @Override
+            public void run() {
+                if (state != GameState.STARTED) {
+                    this.cancel();
+                    return;
+                }
+                long elapsed = (System.currentTimeMillis() - shrinkStartTime) / 1000; // giây
+                if (elapsed >= SHRINK_DURATION_SECONDS) {
+                    // Đạt kích thước cuối cùng
+                    currentWorld.getWorldBorder().setSize(FINAL_BORDER_SIZE);
+                    Bukkit.broadcastMessage("§c§lWorldBorder đã thu nhỏ đến kích thước tối thiểu (10×10)!");
+                    this.cancel();
+                    isShrinking = false;
+                    updateScoreboard();
+                    return;
+                }
+                // Tính kích thước mới: giảm tuyến tính
+                double progress = (double) elapsed / SHRINK_DURATION_SECONDS;
+                double newSize = INITIAL_BORDER_SIZE - (INITIAL_BORDER_SIZE - FINAL_BORDER_SIZE) * progress;
+                if (newSize < FINAL_BORDER_SIZE) newSize = FINAL_BORDER_SIZE;
+                currentWorld.getWorldBorder().setSize(newSize);
+                updateScoreboard();
+            }
+        }.runTaskTimer(plugin, 0L, 20L); // mỗi giây
     }
 
     private void spawnPlayers() {
@@ -304,16 +331,6 @@ public class GameManager {
         }
     }
 
-    private void shrinkBorder() {
-        if (nextShrinkIndex >= borderSizes.size() - 1) return;
-        nextShrinkIndex++;
-        int newSize = borderSizes.get(nextShrinkIndex);
-        WorldBorder wb = currentWorld.getWorldBorder();
-        wb.setSize(newSize);
-        Bukkit.broadcastMessage("§6Worldborder thu nhỏ xuống " + newSize + "x" + newSize);
-        updateScoreboard();
-    }
-
     public void handlePlayerDeath(Player player) {
         if (state != GameState.STARTED) return;
         UUID uuid = player.getUniqueId();
@@ -338,11 +355,11 @@ public class GameManager {
 
         if (pvpTask != null) { pvpTask.cancel(); pvpTask = null; }
         if (scoreboardTask != null) { scoreboardTask.cancel(); scoreboardTask = null; }
+        if (shrinkTask != null) { shrinkTask.cancel(); shrinkTask = null; }
         if (countdownTask != null) { countdownTask.cancel(); countdownTask = null; }
 
         if (winner != null) {
             Bukkit.broadcastMessage("§6§l🏆 " + winner.getName() + " là người chiến thắng! 🏆");
-            // Bắn pháo hoa 10 giây
             for (int i = 0; i < 10; i++) {
                 Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     if (winner.isOnline()) {
@@ -354,7 +371,6 @@ public class GameManager {
             Bukkit.broadcastMessage("§cTrận đấu kết thúc mà không có người thắng!");
         }
 
-        // Reset tất cả người chơi
         for (UUID uuid : allPlayers) {
             Player p = Bukkit.getPlayer(uuid);
             if (p != null && p.isOnline()) {
@@ -373,8 +389,7 @@ public class GameManager {
         saveConfig();
         allPlayers.clear();
         alivePlayers.clear();
-
-        // Không xóa team - giữ team cho trận sau
+        isShrinking = false;
 
         state = GameState.WAITING;
         Bukkit.broadcastMessage("§eTrận đấu mới đã sẵn sàng! Sử dụng /join để tham gia.");
@@ -397,18 +412,20 @@ public class GameManager {
 
     public int getCurrentBorderSize() {
         if (currentWorld == null) return 0;
-        return (int) currentWorld.getWorldBorder().getSize();
+        return (int) Math.round(currentWorld.getWorldBorder().getSize());
     }
 
     public int getSecondsUntilNextShrink() {
-        if (state != GameState.STARTED) return 0;
-        int elapsed = gameTimeSeconds % SHRINK_INTERVAL;
-        return SHRINK_INTERVAL - elapsed;
+        if (state != GameState.STARTED || !isShrinking) return 0;
+        long elapsed = (System.currentTimeMillis() - shrinkStartTime) / 1000;
+        int remaining = SHRINK_DURATION_SECONDS - (int) elapsed;
+        return Math.max(0, remaining);
     }
 
     public void cleanup() {
         if (countdownTask != null) countdownTask.cancel();
         if (pvpTask != null) pvpTask.cancel();
+        if (shrinkTask != null) shrinkTask.cancel();
         if (scoreboardTask != null) scoreboardTask.cancel();
     }
 }
