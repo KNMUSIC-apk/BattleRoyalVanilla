@@ -421,6 +421,12 @@ public class GameManager {
         int remaining = SHRINK_DURATION_SECONDS - (int) elapsed;
         return Math.max(0, remaining);
     }
+    
+    public int getTimeUntilPvp() {
+        if (state != GameState.STARTED) return 0;
+        int remaining = PVP_DELAY - gameTimeSeconds;
+        return Math.max(0, remaining);
+    }
 
     public void cleanup() {
         if (countdownTask != null) countdownTask.cancel();
