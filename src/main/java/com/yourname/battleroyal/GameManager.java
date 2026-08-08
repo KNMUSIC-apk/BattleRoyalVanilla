@@ -1,5 +1,6 @@
 package com.yourname.battleroyal;
 
+import com.yourname.battleroyal.team.TeamManager;
 import com.yourname.battleroyal.utils.LocationUtil;
 import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -40,14 +41,22 @@ public class GameManager {
     private Location borderCenter;
     private World currentWorld;
 
+    // --- Team manager ---
+    private final TeamManager teamManager = new TeamManager();
+
     public GameManager(BattleRoyalPlugin plugin) {
         this.plugin = plugin;
         this.currentWorld = Bukkit.getWorlds().get(0);
     }
 
+    public TeamManager getTeamManager() {
+        return teamManager;
+    }
+
+    // ==================== CONFIG ====================
+
     public void loadConfig() {
         FileConfiguration config = plugin.getConfig();
-        // Đọc an toàn, nếu null thì để null
         String lobbyStr = config.getString("lobby");
         String waitingStr = config.getString("waiting");
         lobbyLocation = (lobbyStr != null && !lobbyStr.isEmpty()) ? LocationUtil.deserialize(lobbyStr) : null;
@@ -63,7 +72,7 @@ public class GameManager {
         plugin.saveConfig();
     }
 
-    // ----- Commands -----
+    // ==================== COMMANDS ====================
 
     public boolean joinGame(Player player) {
         if (state == GameState.WAITING || state == GameState.COUNTDOWN) {
@@ -97,10 +106,53 @@ public class GameManager {
 
     public void leaveGame(Player player) {
         UUID uuid = player.getUniqueId();
-        if (!allPlayers.contains(uuid)) return;
+        if (!allPlayers.contains(uuid)) {
+            // Nếu chưa tham gia, teleport về lobby nếu có
+            if (lobbyLocation != null) player.teleport(lobbyLocation);
+            return;
+        }
+
+        // Xử lý team trước khi rời game
+        if (teamManager.hasTeam(uuid)) {
+            // Nếu là leader và team còn thành viên, chuyển leader
+            if (teamManager.getTeam(uuid).getLeader().equals(uuid)) {
+                Set<UUID> members = teamManager.getTeamMembers(uuid);
+                if (members.size() > 1) {
+                    // Tìm member khác để làm leader
+                    for (UUID m : members) {
+                        if (!m.equals(uuid)) {
+                            teamManager.getTeam(uuid).setLeader(m);
+                            break;
+                        }
+                    }
+                } else {
+                    // Không còn ai, giải tán team
+                    teamManager.disbandTeam(uuid);
+                }
+            }
+            // Rời khỏi team (nếu vẫn còn trong team)
+            if (teamManager.hasTeam(uuid)) {
+                teamManager.leaveTeam(uuid);
+            }
+        }
+
+        // Xóa khỏi danh sách trận đấu
         allPlayers.remove(uuid);
         alivePlayers.remove(uuid);
 
+        // Teleport về lobby và reset
+        if (lobbyLocation != null) {
+            player.teleport(lobbyLocation);
+            player.setGameMode(GameMode.SURVIVAL);
+            player.getInventory().clear();
+            player.setHealth(20);
+            player.setFoodLevel(20);
+            player.getActivePotionEffects().forEach(e -> player.removePotionEffect(e.getType()));
+            player.setWalkSpeed(0.2f);
+        }
+        player.sendMessage("§aBạn đã rời trận đấu và trở về Lobby.");
+
+        // Cập nhật trạng thái nếu cần
         if (state == GameState.STARTED) {
             if (alivePlayers.isEmpty()) {
                 endGame(null);
@@ -140,7 +192,7 @@ public class GameManager {
         admin.sendMessage("§aTrận đấu đã được bắt đầu bởi admin!");
     }
 
-    // ----- Internal logic -----
+    // ==================== INTERNAL LOGIC ====================
 
     private void startCountdown() {
         if (countdownTask != null) return;
@@ -322,6 +374,8 @@ public class GameManager {
         allPlayers.clear();
         alivePlayers.clear();
 
+        // Không xóa team - giữ team cho trận sau
+
         state = GameState.WAITING;
         Bukkit.broadcastMessage("§eTrận đấu mới đã sẵn sàng! Sử dụng /join để tham gia.");
         updateScoreboard();
@@ -331,7 +385,8 @@ public class GameManager {
         plugin.getScoreboardManager().updateScoreboard(this);
     }
 
-    // ----- Getters (quan trọng cho các class khác) -----
+    // ==================== GETTERS ====================
+
     public GameState getState() { return state; }
     public int getAliveCount() { return alivePlayers.size(); }
     public int getTotalPlayers() { return allPlayers.size(); }
