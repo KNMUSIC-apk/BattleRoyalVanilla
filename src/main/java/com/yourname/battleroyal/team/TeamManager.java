@@ -55,7 +55,7 @@ public class TeamManager {
         team.removeMember(player);
         playerTeam.remove(player);
         if (team.getMembers().isEmpty()) {
-            // team sẽ được garbage collect
+            // team sẽ bị garbage collected
         } else {
             if (team.getLeader().equals(player)) {
                 UUID newLeader = team.getMembers().iterator().next();
@@ -85,6 +85,19 @@ public class TeamManager {
     }
 
     // ===== PHƯƠNG THỨC BỔ SUNG =====
+    public UUID getTeamLeader(UUID player) {
+        if (!hasTeam(player)) return null;
+        return playerTeam.get(player).getLeader();
+    }
+
+    public void setTeamLeader(UUID player, UUID newLeader) {
+        if (!hasTeam(player)) return;
+        Team team = playerTeam.get(player);
+        if (team.getMembers().contains(newLeader)) {
+            team.setLeader(newLeader);
+        }
+    }
+
     public boolean hasPendingInvites(UUID player) {
         return pendingInvites.containsKey(player) && !pendingInvites.get(player).isEmpty();
     }
