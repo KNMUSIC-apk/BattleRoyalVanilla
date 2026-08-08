@@ -19,7 +19,6 @@ public class ScoreboardManager {
     }
 
     public void updateScoreboard(GameManager gm) {
-        // Cập nhật cho tất cả người chơi đang trong game (bao gồm spectator)
         for (UUID uuid : gm.getAllPlayers()) {
             Player p = Bukkit.getPlayer(uuid);
             if (p == null || !p.isOnline()) continue;
@@ -34,38 +33,53 @@ public class ScoreboardManager {
         }
         Objective obj = board.getObjective("battle");
         if (obj == null) {
-            obj = board.registerNewObjective("battle", "dummy", ChatColor.GOLD + "⚔ Battle Royale");
+            obj = board.registerNewObjective("battle", "dummy", ChatColor.GOLD + "BATTLE ROYAL VANILLA");
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         } else {
             obj.unregister();
-            obj = board.registerNewObjective("battle", "dummy", ChatColor.GOLD + "⚔ Battle Royale");
+            obj = board.registerNewObjective("battle", "dummy", ChatColor.GOLD + "BATTLE ROYAL VANILLA");
             obj.setDisplaySlot(DisplaySlot.SIDEBAR);
         }
 
         GameState state = gm.getState();
-        obj.getScore(ChatColor.GRAY + "═══════════════").setScore(8);
+
+        // Dòng 7: Border
+        int borderSize = gm.getCurrentBorderSize();
+        obj.getScore("§7Border: §b" + borderSize + "×" + borderSize).setScore(6);
 
         if (state == GameState.WAITING || state == GameState.COUNTDOWN) {
-            obj.getScore("§7Trạng thái: §eĐang chờ").setScore(7);
-            obj.getScore("§7Số người: §b" + gm.getTotalPlayers() + "/30").setScore(6);
+            // Trạng thái chờ
+            obj.getScore("§7Trạng thái: §eĐang chờ").setScore(5);
+            obj.getScore("§7Số người: §b" + gm.getTotalPlayers() + "/30").setScore(4);
             if (state == GameState.COUNTDOWN) {
-                obj.getScore("§7Đếm ngược: §a10 phút").setScore(5);
+                obj.getScore("§7Bắt đầu sau: §a10 phút").setScore(3);
             } else {
-                obj.getScore("§7Cần 15 người để bắt đầu").setScore(5);
+                obj.getScore("§7Cần 15 người để bắt đầu").setScore(3);
             }
         } else if (state == GameState.STARTED) {
-            obj.getScore("§7Alive: §a" + gm.getAliveCount() + " người").setScore(7);
-            obj.getScore("§7PVP: " + (gm.isPvpEnabled() ? "§aON" : "§cOFF")).setScore(6);
-            int sec = gm.getSecondsUntilNextShrink();
-            String time = String.format("%02d:%02d", sec / 60, sec % 60);
-            obj.getScore("§7Thu nhỏ sau: §e" + time).setScore(5);
-            int size = gm.getCurrentBorderSize();
-            obj.getScore("§7Border: §b" + size + "x" + size).setScore(4);
+            // ---- PVP / BO ----
+            int timeUntilPvp = gm.getTimeUntilPvp();
+            if (timeUntilPvp > 0) {
+                // PVP chưa bật -> hiển thị thời gian còn lại
+                String time = formatTime(timeUntilPvp);
+                obj.getScore("§7PVP: §e" + time).setScore(5);
+            } else {
+                // PVP đã bật -> hiển thị thời gian co bo
+                int remainingShrink = gm.getSecondsUntilNextShrink();
+                String time = formatTime(remainingShrink);
+                obj.getScore("§7Bo thu: §e" + time).setScore(5);
+            }
         }
 
-        obj.getScore(ChatColor.GRAY + "═══════════════").setScore(3);
-        obj.getScore("§7Minecraft Battle").setScore(2);
+        // Dòng cuối (trang trí)
+        obj.getScore(ChatColor.GRAY + "═══════════════").setScore(1);
 
         player.setScoreboard(board);
+    }
+
+    private String formatTime(int seconds) {
+        int mins = seconds / 60;
+        int secs = seconds % 60;
+        return String.format("%02d:%02d", mins, secs);
     }
 }
