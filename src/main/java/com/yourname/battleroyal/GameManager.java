@@ -42,13 +42,16 @@ public class GameManager {
 
     public GameManager(BattleRoyalPlugin plugin) {
         this.plugin = plugin;
-        this.currentWorld = Bukkit.getWorlds().get(0); // Lấy world đầu tiên
+        this.currentWorld = Bukkit.getWorlds().get(0);
     }
 
     public void loadConfig() {
         FileConfiguration config = plugin.getConfig();
-        lobbyLocation = LocationUtil.deserialize(config.getString("lobby"));
-        waitingLocation = LocationUtil.deserialize(config.getString("waiting"));
+        // Đọc an toàn, nếu null thì để null
+        String lobbyStr = config.getString("lobby");
+        String waitingStr = config.getString("waiting");
+        lobbyLocation = (lobbyStr != null && !lobbyStr.isEmpty()) ? LocationUtil.deserialize(lobbyStr) : null;
+        waitingLocation = (waitingStr != null && !waitingStr.isEmpty()) ? LocationUtil.deserialize(waitingStr) : null;
         matchIndex = config.getInt("matchIndex", 0);
     }
 
