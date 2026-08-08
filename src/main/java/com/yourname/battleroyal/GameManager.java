@@ -240,6 +240,7 @@ public class GameManager {
 
         spawnPlayers();
 
+        // Bật PVP sau 15 phút
         pvpTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -250,6 +251,7 @@ public class GameManager {
             }
         }.runTaskLater(plugin, PVP_DELAY * 20L);
 
+        // Cập nhật scoreboard mỗi giây
         scoreboardTask = new BukkitRunnable() {
             @Override
             public void run() {
