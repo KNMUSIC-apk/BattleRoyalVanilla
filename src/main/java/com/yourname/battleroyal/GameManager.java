@@ -29,7 +29,7 @@ public class GameManager {
 
     private BukkitTask countdownTask;
     private BukkitTask pvpTask;
-    private BukkitTask shrinkTask;       // Task co bo
+    private BukkitTask shrinkTask;
     private BukkitTask scoreboardTask;
 
     private int gameTimeSeconds = 0;
@@ -236,23 +236,20 @@ public class GameManager {
         borderCenter = new Location(currentWorld, x, 0, z);
         WorldBorder wb = currentWorld.getWorldBorder();
         wb.setCenter(x, z);
-        wb.setSize(INITIAL_BORDER_SIZE); // 500×500
+        wb.setSize(INITIAL_BORDER_SIZE);
 
         spawnPlayers();
 
-        // Bật PVP sau 15 phút
         pvpTask = new BukkitRunnable() {
             @Override
             public void run() {
                 pvpEnabled = true;
                 Bukkit.broadcastMessage("§c§lPVP ĐÃ BẬT! Hãy chiến đấu!");
-                // Bắt đầu co bo ngay khi PVP bật
                 startShrinking();
                 updateScoreboard();
             }
         }.runTaskLater(plugin, PVP_DELAY * 20L);
 
-        // Cập nhật scoreboard mỗi giây
         scoreboardTask = new BukkitRunnable() {
             @Override
             public void run() {
@@ -278,9 +275,8 @@ public class GameManager {
                     this.cancel();
                     return;
                 }
-                long elapsed = (System.currentTimeMillis() - shrinkStartTime) / 1000; // giây
+                long elapsed = (System.currentTimeMillis() - shrinkStartTime) / 1000;
                 if (elapsed >= SHRINK_DURATION_SECONDS) {
-                    // Đạt kích thước cuối cùng
                     currentWorld.getWorldBorder().setSize(FINAL_BORDER_SIZE);
                     Bukkit.broadcastMessage("§c§lWorldBorder đã thu nhỏ đến kích thước tối thiểu (10×10)!");
                     this.cancel();
@@ -288,14 +284,13 @@ public class GameManager {
                     updateScoreboard();
                     return;
                 }
-                // Tính kích thước mới: giảm tuyến tính
                 double progress = (double) elapsed / SHRINK_DURATION_SECONDS;
                 double newSize = INITIAL_BORDER_SIZE - (INITIAL_BORDER_SIZE - FINAL_BORDER_SIZE) * progress;
                 if (newSize < FINAL_BORDER_SIZE) newSize = FINAL_BORDER_SIZE;
                 currentWorld.getWorldBorder().setSize(newSize);
                 updateScoreboard();
             }
-        }.runTaskTimer(plugin, 0L, 20L); // mỗi giây
+        }.runTaskTimer(plugin, 0L, 20L);
     }
 
     private void spawnPlayers() {
@@ -421,7 +416,7 @@ public class GameManager {
         int remaining = SHRINK_DURATION_SECONDS - (int) elapsed;
         return Math.max(0, remaining);
     }
-    
+
     public int getTimeUntilPvp() {
         if (state != GameState.STARTED) return 0;
         int remaining = PVP_DELAY - gameTimeSeconds;
