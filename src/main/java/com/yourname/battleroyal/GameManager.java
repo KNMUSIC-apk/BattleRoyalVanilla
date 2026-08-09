@@ -21,8 +21,9 @@ public class GameManager {
     private Location waitingLocation;
 
     private int matchIndex = 0;
-    private static final int CENTER_START = 5500;
-    private static final int CENTER_STEP = 11000;
+    private static final int CENTER_START_X = 500;
+    private static final int CENTER_START_Z = -500;
+    private static final int CENTER_STEP = 1000; // 1000 block
 
     private final Set<UUID> alivePlayers = new HashSet<>();
     private final Set<UUID> allPlayers = new HashSet<>();
@@ -114,7 +115,6 @@ public class GameManager {
             return;
         }
 
-        // ---- XỬ LÝ RỜI TEAM ----
         if (teamManager.hasTeam(uuid)) {
             UUID leader = teamManager.getTeamLeader(uuid);
             if (leader != null && leader.equals(uuid)) {
@@ -228,12 +228,12 @@ public class GameManager {
         pvpEnabled = false;
         isShrinking = false;
 
-        int x = CENTER_START + matchIndex * CENTER_STEP;
-        int z = CENTER_START + matchIndex * CENTER_STEP;
+        int x = CENTER_START_X + matchIndex * CENTER_STEP;
+        int z = CENTER_START_Z + matchIndex * CENTER_STEP;
         borderCenter = new Location(currentWorld, x, 0, z);
         WorldBorder wb = currentWorld.getWorldBorder();
         wb.setCenter(x, z);
-        wb.setSize(INITIAL_BORDER_SIZE);
+        wb.setSize(INITIAL_BORDER_SIZE); // 500×500
 
         spawnPlayers();
 
